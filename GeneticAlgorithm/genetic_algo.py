@@ -65,7 +65,6 @@ def GeneratePopulation(sets):
             individual.append(random.choice([0, 1]))
         if CheckDupe(population, individual) and CheckClass(individual):
             population.append(individual)
-            # print("++", population[0])
     return population
     
 def Fitness(individual):
@@ -82,7 +81,7 @@ def Fitness(individual):
 #Elitist selection 
 def Selection(population):
     population.sort(reverse = True, key = Fitness)
-    return population[: population_size//3]
+    return population[: population_size//2]
     
 def Crossover(parents):
     crossover_pt = random.randint(0, sets_size - 1)
@@ -102,7 +101,6 @@ def GeneticAlgo(sets):
     for i in range(generation):
         while len(new_population) < len(population):
             parents = random.choices(Selection(population),k = 2)
-            # print("--", parents[0])
             child1, child2 = Crossover(parents)
             if random.random() < mutation_rate:
                 child1 = Mutate(child1)
