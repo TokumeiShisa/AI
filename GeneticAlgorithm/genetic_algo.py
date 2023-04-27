@@ -35,7 +35,7 @@ def GetDataFromFile(filename):
     return capacity, _class, sets
 
 def CreateFileOutput(max_val, sets, i):
-    filename = "TEST/OUTPUT_" + str(i) + ".txt"
+    filename = "OUTPUT_" + str(i) + ".txt"
     fo = open(filename, "w")
     fo.write(str(max_val) + "\n")
     fo.write(", ".join([str(i) for i in sets]))
