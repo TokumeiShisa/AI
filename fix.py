@@ -42,30 +42,23 @@ def GetDataFromFile(filename):
         sets.append(Item(float(weight_list[i]), int(value_list[i]), int(label_list[i]), int(i)))
     return capacity, _class, sets
   
-  def branchAndBound(maxW, numClass, items):
-    items.sort(key=lambda x: x.ratio, reverse=True)
+  def calBound(maxW, value, weight, items, i):
+    return value + (maxW - weight) * items[i + 1].ratio
+
+def branchAndBound(maxW, numClass, items):
     n = len(items)
-    root = [0, set(), 0, 0, []]
-    heap = [(0, root)]
-    max = 0
-    while(heap):
-        ign, node = heapq.heappop(heap)
-        level, selectedClasses, value, weight, selectedItems = node
-        if ign > -max:
-            continue
-        if level == n:
-            if value > max:
-                max = value
-                for i in range(n):
-                    items[items[i].index].ans = selectedItems[i]
-            continue
-        curWeight, curValue, curClass = items[level].weight, items[level].value, items[level].label
-        if curClass not in selectedClasses:
-            selectedClasses.add(curClass)
-        bound = value + (maxW - weight) * items[level].ratio
-        if (weight + curWeight <= maxW):
-            heapq.heappush(heap, (-bound, (level + 1, selectedClasses, value + curValue, weight + curWeight, selectedItems + [1], )))
-            heapq.heappush(heap, (-bound, (level + 1, selectedClasses, value, weight, selectedItems + [0])))
-        else:
-            heapq.heappush(heap, (0, (level + 1, selectedClasses, value, weight, selectedItems + [0])))
-    return max
+    w = 0
+    v = 0
+    items.sort(key=lambda x: x.ratio, reverse=True)
+    for i in range(n - 1):
+        ub1 = calBound(maxW, v + items[i].value, w + items[i].weight, items, i)  #with items[i]
+        ub2 = calBound(maxW, v, w, items, i)    #without items[i]
+        if ub1 > ub2 and w + items[i].weight <= maxW:
+            w += items[i].weight
+            v += items[i].value
+            items[items[i].index].ans = 1
+    if w + items[n - 1].weight <= maxW:
+        w += items[n - 1].weight
+        v += items[n - 1].value
+        items[items[n - 1].index].ans = 1 
+    return v
