@@ -1,13 +1,14 @@
-import heapq
 from itertools import product
 import random
 import time
 class Item:
-    def __init__(self, weight, value, label):
+    def __init__(self, weight, value, label, index):
         self.weight = weight
         self.value = value
         self.label = label
         self.ans = 0
+        self.ratio = value / weight
+        self.index = index
     def Output(self):
         print(self.weight, "\t", self.value,"\t", self.label, '\t', self.ans, "\n")
 
@@ -18,14 +19,14 @@ def DataGenerate(size, _class):
     for x in range(_class):
         weight = random.uniform(1,100)
         value = random.randint(1,100)
-        sets.append(Item(weight, value, x + 1))
+        sets.append(Item(weight, value, x + 1, x))
         min_weight += weight
         max_weight += weight
     for x in range(size - _class):
         weight = random.uniform(1,100)
         value = random.randint(1,100)
         label = random.randint(1, _class)
-        sets.append(Item(weight, value, label))
+        sets.append(Item(weight, value, label, x + _class))
         max_weight += weight
     capacity = int(random.uniform(min_weight, max_weight))   
     random.shuffle(sets) 
@@ -53,7 +54,7 @@ def GetDataFromFile(filename):
     value_list = fo.readline().split(", ")
     label_list = fo.readline().split(", ")
     for i in range(len(weight_list)):
-        sets.append(Item(float(weight_list[i]), int(value_list[i]), int(label_list[i])))
+        sets.append(Item(float(weight_list[i]), int(value_list[i]), int(label_list[i]), int(i)))
     return capacity, _class, sets
 
 def CreateFileOutput(max_val, sets, i):
@@ -93,50 +94,46 @@ def bruteForce(maxW, numClass, items):
                 for i in range(n):
                     items[i].ans = permu[i]
     return max
-    
+
+def calBound(maxW, value, weight, items, i):
+    return value + (maxW - weight) * items[i + 1].ratio
+
 def branchAndBound(maxW, numClass, items):
     n = len(items)
-    root = [0, set(), 0, 0, []]
-    heap = [(0, root)]
-    max = 0
-    while(heap):
-        ign, node = heapq.heappop(heap)
-        level, selectedClasses, value, weight, selectedItems = node
-        if level == n:
-            if value > max:
-                max = value
-                for i in range(n):
-                    items[i].ans = selectedItems[i]
-            continue
-        curWeight, curValue, curClass = items[level].weight, items[level].value, items[level].label
-        if curClass not in selectedClasses:
-            selectedClasses.add(curClass)
-        bound = value + (maxW - weight) * (curValue / curWeight)
-        if (weight + curWeight <= maxW):
-            heapq.heappush(heap, (-bound, (level + 1, selectedClasses, value + curValue, weight + curWeight, selectedItems + [1], )))
-            heapq.heappush(heap, (-bound, (level + 1, selectedClasses, value, weight, selectedItems + [0])))
-        else:
-            heapq.heappush(heap, (0, (level + 1, selectedClasses, value, weight, selectedItems + [0])))
-    return max
-    
+    w = 0
+    v = 0
+    items.sort(key=lambda x: x.ratio, reverse=True)
+    for i in range(n - 1):
+        ub1 = calBound(maxW, v + items[i].value, w + items[i].weight, items, i)  #with items[i]
+        ub2 = calBound(maxW, v, w, items, i)    #without items[i]
+        if ub1 > ub2 and w + items[i].weight <= maxW:
+            w += items[i].weight
+            v += items[i].value
+            items[items[i].index].ans = 1
+    if w + items[n - 1].weight <= maxW:
+        w += items[n - 1].weight
+        v += items[n - 1].value
+        items[items[n - 1].index].ans = 1 
+    return v
+
 if __name__ == "__main__":
-    '''
-    for i in range(1,6):			#tao random 5 file size 10 - 40
-        size = random.randint(10, 40)
-        _class = random.randint(2, 3)
-        print(CreateFileInput(size, _class, i))
-    
-    for i in range(6,11):			#tao random 5 file size 50 - 1000
-        size = random.randint(50, 1000)
-        _class = random.randint(5, 10)
-        print(CreateFileInput(size, _class, i))
-    '''
-    for i in range(1, 11):
-        filename = 'INPUT_' + str(i) + '.txt'
-        maxW, numClass, items = GetDataFromFile(filename)
-        start = time.time()
-        max = bruteForce(maxW, numClass, items)
-        #max = branchAndBound(maxW, numClass, items)
-        end = time.time()
-        print('test case', i,  ':', end - start)
-        CreateFileOutput(max, items, i)
+    time_list = []
+    for i in range(10):
+        start_time = time.time()
+        maxW, numClass, items = GetDataFromFile(f"INPUT_{i}.txt")
+        items_size = len(items)
+        print("Test case", i + 1)
+        print("Items:",items_size)
+
+        max_val = branchAndBound(maxW, numClass, items)
+
+        print("Ans:", max_val)
+        end = round((time.time() - start_time) * 1000, 4)
+        print("Running time:", end, "ms")
+        time_list.append(end)
+        CreateFileOutput(max_val, items, i)
+        
+    with open("data.txt", "a") as f:
+        f.write("Branch and Bound: ")
+        f.write("\n".join([str(i) for i in items]))
+        f.close()
